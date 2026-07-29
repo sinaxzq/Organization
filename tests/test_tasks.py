@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import pytest
 
 def test_get_existing_task(client: TestClient):
     response = client.get("/organizations/1/tasks/1")
@@ -100,3 +101,21 @@ def test_tasks_pagination(client: TestClient):
     assert body["limit"] == 1
     assert body["offset"] == 1
     assert body["items"][0]["id"] == 2
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"title": None},
+        {"status": None},
+    ],
+)
+def test_update_rejects_null_fields(
+    client,
+    payload,
+):
+    response = client.patch(
+        "/organizations/1/tasks/1",
+        json=payload,
+    )
+
+    assert response.status_code == 422

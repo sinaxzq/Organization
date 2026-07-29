@@ -1,5 +1,5 @@
-from typing import Literal
-from pydantic import BaseModel, Field
+from typing import Any, Literal
+from pydantic import BaseModel, Field, field_validator
 
 TaskStatus = Literal["todo", "in_progress", "done"]
 
@@ -17,6 +17,23 @@ class TaskUpdate(BaseModel):
         max_length=200,
     )
     status: TaskStatus | None = None
+
+    @field_validator(
+        "title",
+        "status",
+        mode="before",
+    )
+    @classmethod
+    def reject_null(
+        cls,
+        value: Any,
+    ) -> Any:
+        if value is None:
+            raise ValueError(
+                "Field cannot be null"
+            )
+
+        return value
 
 class TaskResponse(BaseModel):
     id: int
