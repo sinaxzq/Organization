@@ -1,0 +1,160 @@
+from fastapi import HTTPException, FastAPI, Query
+from pydantic import BaseModel, Field
+from typing import Literal
+from contextlib import asynccontextmanager
+import database
+import sqlite3
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    database.init_database()
+
+    yield
+
+app = FastAPI(lifespan=lifespan)
+            
+@app.get("/")
+def root():
+    return {"message": "Operations Platform API is running"}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+class TaskCreate(BaseModel):
+    title: str = Field(
+        min_length=1,
+        max_length=200,
+    )
+    status: TaskStatus = "todo"
+
+class TaskUpdate(BaseModel):
+    title: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+    )
+    status: TaskStatus | None = None
+
+class TaskResponse(BaseModel):
+    id: int
+    title: str
+    status: TaskStatus
+
+class TaskListResponse(BaseModel):
+    items: list[TaskResponse]
+    count: int
+    total: int
+    limit: int
+    offset: int
+
+TaskStatus = Literal["todo", "in_progress", "done"]
+
+def get_task_or_404(task_id: int) -> dict:
+    task = database.get_task(task_id)
+
+    if task is None:
+        raise HTTPException(
+              status_code=404,
+              detail="Task not found"
+        )
+
+    return task
+
+@app.get("/tasks", response_model=TaskListResponse)
+def get_tasks(status: TaskStatus | None = None,
+              limit: int = Query(default=10, ge=1, le=100),
+              offset: int = Query(default=0, ge=0),
+              q: str | None = Query(
+                  default=None,
+                  min_length=1,
+                  max_length=100,
+              )
+              ):
+
+    page_tasks, total = database.get_tasks(
+    status=status,
+    q=q,
+    limit=limit,
+    offset=offset,
+    )
+    
+    return {
+    "items": page_tasks,
+    "count": len(page_tasks),
+    "total": total,
+    "limit": limit,
+    "offset": offset,
+}
+
+@app.get("/tasks/{task_id}", response_model=TaskResponse)
+def get_task(task_id: int):
+    return get_task_or_404(task_id)
+    
+@app.post("/tasks", status_code=201, response_model=TaskResponse)
+def create_task(task:TaskCreate):
+    return database.create_task(
+    title=task.title,
+    status=task.status,
+)
+
+@app.patch("/tasks/{task_id}", response_model=TaskResponse)
+def update_task(task_id: int, update: TaskUpdate):
+    update_data = update.model_dump(exclude_unset=True)
+
+    updated_task = database.update_task(
+        task_id=task_id,
+        update_data=update_data,
+    )
+
+    if updated_task is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found",
+        )
+
+    return updated_task
+
+@app.delete("/tasks/{task_id}", status_code=204)
+def delete_task(task_id: int):
+    deleted = database.delete_task(task_id)
+
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found",
+        )
+
+class OrganizationCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+
+class OrganizationResponse(BaseModel):
+    id: int
+    name: str
+
+@app.get(
+    "/organizations",
+    response_model=list[OrganizationResponse],
+)
+def get_organizations():
+    return database.get_organizations()
+
+
+@app.post(
+    "/organizations",
+    status_code=201,
+    response_model=OrganizationResponse,
+)
+def create_organization(organization: OrganizationCreate):
+    created_organization = database.create_organization(
+        organization.name
+    )
+
+    if created_organization is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Organization name already exists",
+        )
+
+    return created_organization
+
