@@ -337,3 +337,22 @@ def create_organization(name: str) -> dict | None:
             )
 
         return dict(row)
+
+def get_organization(
+    organization_id: int,
+) -> dict | None:
+    with database_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT id, name
+            FROM organizations
+            WHERE id = ?
+            """,
+            (organization_id,),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return dict(row)
+

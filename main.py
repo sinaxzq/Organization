@@ -1,4 +1,4 @@
-from fastapi import HTTPException, FastAPI, Query
+from fastapi import HTTPException, FastAPI, Query, Depends
 from pydantic import BaseModel, Field
 from typing import Literal
 from contextlib import asynccontextmanager
@@ -50,6 +50,21 @@ class TaskListResponse(BaseModel):
 
 TaskStatus = Literal["todo", "in_progress", "done"]
 
+def get_organization_or_404(
+    organization_id: int,
+) -> dict:
+    organization = database.get_organization(
+        organization_id
+    )
+
+    if organization is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Organization not found",
+        )
+
+    return organization
+
 def get_task_or_404(organization_id:int, task_id: int) -> dict:
     task = database.get_task(organization_id, task_id)
 
@@ -61,7 +76,9 @@ def get_task_or_404(organization_id:int, task_id: int) -> dict:
 
     return task
 
-@app.get("/organizations/{organization_id}/tasks", response_model=TaskListResponse)
+@app.get("/organizations/{organization_id}/tasks", response_model=TaskListResponse, dependencies=[
+        Depends(get_organization_or_404)
+    ],)
 def get_tasks(organization_id: int,
               status: TaskStatus | None = None,
               limit: int = Query(default=10, ge=1, le=100),
@@ -92,6 +109,9 @@ def get_tasks(organization_id: int,
 @app.get(
     "/organizations/{organization_id}/tasks/{task_id}",
     response_model=TaskResponse,
+     dependencies=[
+        Depends(get_organization_or_404)
+    ],
 )
 def get_task(
     organization_id: int,
@@ -102,7 +122,9 @@ def get_task(
         task_id=task_id,
     )
     
-@app.post("/organizations/{organization_id}/tasks", status_code=201, response_model=TaskResponse)
+@app.post("/organizations/{organization_id}/tasks", status_code=201, response_model=TaskResponse, dependencies=[
+        Depends(get_organization_or_404)
+    ],)
 def create_task(organization_id:int, task:TaskCreate):
     return database.create_task(
     organization_id = organization_id,
@@ -110,7 +132,9 @@ def create_task(organization_id:int, task:TaskCreate):
     status=task.status,
     )
 
-@app.patch("/organizations/{organization_id}/tasks/{task_id}", response_model=TaskResponse)
+@app.patch("/organizations/{organization_id}/tasks/{task_id}", response_model=TaskResponse, dependencies=[
+        Depends(get_organization_or_404)
+    ],)
 def update_task(organization_id: int, task_id: int, update: TaskUpdate):
     update_data = update.model_dump(exclude_unset=True)
 
@@ -128,7 +152,9 @@ def update_task(organization_id: int, task_id: int, update: TaskUpdate):
 
     return updated_task
 
-@app.delete("/organizations/{organization_id}/tasks/{task_id}", status_code=204)
+@app.delete("/organizations/{organization_id}/tasks/{task_id}", status_code=204, dependencies=[
+        Depends(get_organization_or_404)
+    ],)
 def delete_task(organization_id: int, task_id: int):
     deleted = database.delete_task(organization_id, task_id)
 
@@ -148,6 +174,7 @@ class OrganizationResponse(BaseModel):
 @app.get(
     "/organizations",
     response_model=list[OrganizationResponse],
+    
 )
 def get_organizations():
     return database.get_organizations()
@@ -171,3 +198,13 @@ def create_organization(organization: OrganizationCreate):
 
     return created_organization
 
+@app.get(
+    "/organizations/{organization_id}",
+    response_model=OrganizationResponse,
+)
+def get_organization(
+    organization_id: int,
+):
+    return get_organization_or_404(
+        organization_id
+    )

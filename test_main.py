@@ -269,3 +269,44 @@ def test_cannot_access_task_from_another_organization():
     )
 
     assert response.status_code == 404
+
+def test_get_organization():
+    response = client.get("/organizations/1")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": 1,
+        "name": "Default Organization",
+    }
+
+def test_get_missing_organization():
+    response = client.get("/organizations/999")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Organization not found",
+    }
+
+def test_cannot_get_tasks_for_missing_organization():
+    response = client.get(
+        "/organizations/999/tasks"
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Organization not found",
+    }
+
+def test_cannot_create_task_for_missing_organization():
+    response = client.post(
+        "/organizations/999/tasks",
+        json={
+            "title": "Impossible task",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Organization not found",
+    }
+
