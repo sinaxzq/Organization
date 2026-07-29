@@ -50,8 +50,8 @@ class TaskListResponse(BaseModel):
 
 TaskStatus = Literal["todo", "in_progress", "done"]
 
-def get_task_or_404(task_id: int) -> dict:
-    task = database.get_task(task_id)
+def get_task_or_404(organization_id:int, task_id: int) -> dict:
+    task = database.get_task(organization_id, task_id)
 
     if task is None:
         raise HTTPException(
@@ -61,8 +61,9 @@ def get_task_or_404(task_id: int) -> dict:
 
     return task
 
-@app.get("/tasks", response_model=TaskListResponse)
-def get_tasks(status: TaskStatus | None = None,
+@app.get("/organizations/{organization_id}/tasks", response_model=TaskListResponse)
+def get_tasks(organization_id: int,
+              status: TaskStatus | None = None,
               limit: int = Query(default=10, ge=1, le=100),
               offset: int = Query(default=0, ge=0),
               q: str | None = Query(
@@ -73,6 +74,7 @@ def get_tasks(status: TaskStatus | None = None,
               ):
 
     page_tasks, total = database.get_tasks(
+    organization_id=organization_id,
     status=status,
     q=q,
     limit=limit,
@@ -85,24 +87,35 @@ def get_tasks(status: TaskStatus | None = None,
     "total": total,
     "limit": limit,
     "offset": offset,
-}
+    }
 
-@app.get("/tasks/{task_id}", response_model=TaskResponse)
-def get_task(task_id: int):
-    return get_task_or_404(task_id)
+@app.get(
+    "/organizations/{organization_id}/tasks/{task_id}",
+    response_model=TaskResponse,
+)
+def get_task(
+    organization_id: int,
+    task_id: int,
+):
+    return get_task_or_404(
+        organization_id=organization_id,
+        task_id=task_id,
+    )
     
-@app.post("/tasks", status_code=201, response_model=TaskResponse)
-def create_task(task:TaskCreate):
+@app.post("/organizations/{organization_id}/tasks", status_code=201, response_model=TaskResponse)
+def create_task(organization_id:int, task:TaskCreate):
     return database.create_task(
+    organization_id = organization_id,
     title=task.title,
     status=task.status,
-)
+    )
 
-@app.patch("/tasks/{task_id}", response_model=TaskResponse)
-def update_task(task_id: int, update: TaskUpdate):
+@app.patch("/organizations/{organization_id}/tasks/{task_id}", response_model=TaskResponse)
+def update_task(organization_id: int, task_id: int, update: TaskUpdate):
     update_data = update.model_dump(exclude_unset=True)
 
     updated_task = database.update_task(
+        organization_id=organization_id,
         task_id=task_id,
         update_data=update_data,
     )
@@ -115,9 +128,9 @@ def update_task(task_id: int, update: TaskUpdate):
 
     return updated_task
 
-@app.delete("/tasks/{task_id}", status_code=204)
-def delete_task(task_id: int):
-    deleted = database.delete_task(task_id)
+@app.delete("/organizations/{organization_id}/tasks/{task_id}", status_code=204)
+def delete_task(organization_id: int, task_id: int):
+    deleted = database.delete_task(organization_id, task_id)
 
     if not deleted:
         raise HTTPException(

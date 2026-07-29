@@ -42,7 +42,7 @@ def test_health():
     assert response.json() == {"status": "ok"}
 
 def test_get_existing_task():
-    response = client.get("/tasks/1")
+    response = client.get("/organizations/1/tasks/1")
 
     assert response.status_code == 200
 
@@ -54,20 +54,20 @@ def test_get_existing_task():
 
 
 def test_get_missing_task():
-    response = client.get("/tasks/999999")
+    response = client.get("/organizations/1/tasks/999999")
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Task not found"}
 
 
 def test_rejects_invalid_status_filter():
-    response = client.get("/tasks?status=potato")
+    response = client.get("/organizations/1/tasks?status=potato")
 
     assert response.status_code == 422
 
 def test_create_task():
     response = client.post(
-        "/tasks", 
+        "/organizations/1/tasks", 
         json={
             "title": "Написать автоматические тесты",
             "status": "todo",
@@ -82,13 +82,13 @@ def test_create_task():
     assert created_task["title"] == "Написать автоматические тесты"
     assert created_task["status"] == "todo"
 
-    get_response = client.get(f"/tasks/{created_task['id']}")
+    get_response = client.get(f"/organizations/1/tasks/{created_task['id']}")
 
     assert get_response.status_code == 200
     assert get_response.json() == created_task
 
 def test_update_task():
-    response = client.patch("/tasks/1", json={
+    response = client.patch("/organizations/1/tasks/1", json={
                 "status": "done",
             },)
     
@@ -101,12 +101,12 @@ def test_update_task():
     assert updated_task["title"] == "Настроить backend"
 
 def test_delete_task():
-    response = client.delete("/tasks/1")
+    response = client.delete("/organizations/1/tasks/1")
 
     assert response.status_code == 204
     assert response.content == b""
 
-    get_response = client.get("/tasks/1")
+    get_response = client.get("/organizations/1/tasks/1")
 
     assert get_response.status_code == 404
 
@@ -129,13 +129,13 @@ def test_database_transaction_rolls_back():
                 ("Некорректная задача", "potato"),
             )
 
-    stored_tasks = database.get_tasks()
+    stored_tasks = database.get_tasks(1)
 
     assert len(stored_tasks) == 2
 
 def test_search_tasks_is_case_insensitive():
     response = client.get(
-        "/tasks",
+        "/organizations/1/tasks",
         params={"q": "НАСТРОИТЬ"},
     )
 
@@ -149,7 +149,7 @@ def test_search_tasks_is_case_insensitive():
 
 def test_tasks_pagination():
     response = client.get(
-        "/tasks",
+        "/organizations/1/tasks",
         params={
             "limit": 1,
             "offset": 1,
@@ -255,3 +255,17 @@ def test_rejects_duplicate_organization_name():
     assert response.json() == {
         "detail": "Organization name already exists",
     }
+
+def test_cannot_access_task_from_another_organization():
+    create_response = client.post(
+        "/organizations",
+        json={"name": "Second Organization"},
+    )
+
+    assert create_response.status_code == 201
+
+    response = client.get(
+        "/organizations/2/tasks/1"
+    )
+
+    assert response.status_code == 404

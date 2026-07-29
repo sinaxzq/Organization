@@ -136,13 +136,14 @@ def init_database():
             version = 3
 
 def get_tasks(
+    organization_id: int,
     status: str | None = None,
     q: str | None = None,
     limit: int = 10,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
-    conditions: list[str] = []
-    parameters: list[object] = []
+    conditions = ["organization_id = ?"]
+    parameters: list[object] = [organization_id]
 
     if status is not None:
         conditions.append("status = ?")
@@ -188,15 +189,19 @@ def get_tasks(
         total_row["total"],
     )
 
-def get_task(task_id: int) -> dict | None:
+def get_task(
+    organization_id: int,
+    task_id: int,
+) -> dict | None:
     with database_transaction() as connection:
         row = connection.execute(
             """
             SELECT id, title, status
             FROM tasks
             WHERE id = ?
+                AND organization_id = ?
             """,
-            (task_id,),
+            (task_id,organization_id),
         ).fetchone()
 
     if row is None:
@@ -204,14 +209,18 @@ def get_task(task_id: int) -> dict | None:
 
     return dict(row)
 
-def create_task(title: str, status: str) -> dict:
+def create_task(
+    organization_id: int,
+    title: str,
+    status: str,
+) -> dict:
     with database_transaction() as connection:
         cursor = connection.execute(
             """
             INSERT INTO tasks (organization_id, title, status)
             VALUES (?, ?, ?)
             """,
-            (1, title, status),
+            (organization_id, title, status),
         )
 
         task_id = cursor.lastrowid
@@ -221,11 +230,12 @@ def create_task(title: str, status: str) -> dict:
 
         row = connection.execute(
             """
-            SELECT id, title, status
+            SELECT id, organization_id, title, status
             FROM tasks
-            WHERE id = ?
+            WHERE id = ? 
+                AND organization_id = ?
             """,
-            (task_id,),
+            (task_id,organization_id),
         ).fetchone()
 
         if row is None:
@@ -234,6 +244,7 @@ def create_task(title: str, status: str) -> dict:
         return dict(row)
 
 def update_task(
+    organization_id: int,
     task_id: int,
     update_data: dict,
 ) -> dict | None:
@@ -246,16 +257,16 @@ def update_task(
             values.append(update_data[field])
 
     if not assignments:
-        return get_task(task_id)
+        return get_task(organization_id, task_id)
 
-    values.append(task_id)
+    values.extend([task_id, organization_id])
 
     with database_transaction() as connection:
         cursor = connection.execute(
             f"""
             UPDATE tasks
             SET {", ".join(assignments)}
-            WHERE id = ?
+            WHERE id = ? AND organization_id = ?
             """,
             values,
         )
@@ -263,16 +274,16 @@ def update_task(
         if cursor.rowcount == 0:
             return None
 
-    return get_task(task_id)
+    return get_task(organization_id, task_id)
 
-def delete_task(task_id: int) -> bool:
+def delete_task(organization_id: int, task_id: int) -> bool:
     with database_transaction() as connection:
         cursor = connection.execute(
             """
             DELETE FROM tasks
-            WHERE id = ?
+            WHERE id = ? AND organization_id = ?
             """,
-            (task_id,),
+            (task_id,organization_id),
         )
 
         return cursor.rowcount > 0
