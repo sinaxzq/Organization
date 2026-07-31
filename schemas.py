@@ -9,6 +9,11 @@ class TaskCreate(BaseModel):
         max_length=200,
     )
     status: TaskStatus = "todo"
+    priority: int = Field(
+    default=0,
+    ge=0,
+    le=5,
+    )
 
     @field_validator(
         "title",
@@ -29,10 +34,15 @@ class TaskUpdate(BaseModel):
         max_length=200,
     )
     status: TaskStatus | None = None
-
+    priority: int | None = Field(
+    default=None,
+    ge=0,
+    le=5,
+    )
     @field_validator(
         "title",
         "status",
+        "priority",
         mode="before",
     )
     def reject_null(
@@ -58,6 +68,7 @@ class TaskResponse(BaseModel):
     id: int
     title: str
     status: TaskStatus
+    priority: int
 
 class TaskListResponse(BaseModel):
     items: list[TaskResponse]
@@ -82,3 +93,4 @@ def normalize_task_title(value: str) -> str:
         )
 
     return normalized_value
+

@@ -146,3 +146,42 @@ def test_create_task_strips_title(client):
 
     assert response.status_code == 201
     assert response.json()["title"] == "Prepare release"
+
+def test_create_task_has_default_priority(client):
+    response = client.post(
+        "/organizations/1/tasks",
+        json={"title": "Default priority"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["priority"] == 0
+
+def test_create_task_with_priority(client):
+    response = client.post(
+        "/organizations/1/tasks",
+        json={
+            "title": "Important task",
+            "priority": 5,
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["priority"] == 5
+
+@pytest.mark.parametrize(
+    "priority",
+    [-1, 6],
+)
+def test_rejects_invalid_task_priority(
+    client,
+    priority,
+):
+    response = client.post(
+        "/organizations/1/tasks",
+        json={
+            "title": "Invalid priority",
+            "priority": priority,
+        },
+    )
+
+    assert response.status_code == 422

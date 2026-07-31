@@ -34,4 +34,4 @@ def test_database_schema_version(client: TestClient):
             "PRAGMA user_version"
         ).fetchone()
 
-    assert row[0] == 3
+    assert row[0] == 4
