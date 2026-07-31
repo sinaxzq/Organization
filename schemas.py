@@ -10,6 +10,18 @@ class TaskCreate(BaseModel):
     )
     status: TaskStatus = "todo"
 
+    @field_validator(
+        "title",
+    )
+    @classmethod
+    def reject_dull(
+        cls,
+        value: str
+    ) -> str:
+        return normalize_task_title(value)
+
+        
+
 class TaskUpdate(BaseModel):
     title: str | None = Field(
         default=None,
@@ -23,9 +35,7 @@ class TaskUpdate(BaseModel):
         "status",
         mode="before",
     )
-    @classmethod
     def reject_null(
-        cls,
         value: Any,
     ) -> Any:
         if value is None:
@@ -34,6 +44,15 @@ class TaskUpdate(BaseModel):
             )
 
         return value
+
+    @field_validator("title")
+    def validate_title(
+        value: str | None,
+    ) -> str | None:
+        if value is None:
+            return None
+
+        return normalize_task_title(value)
 
 class TaskResponse(BaseModel):
     id: int
@@ -53,3 +72,13 @@ class OrganizationCreate(BaseModel):
 class OrganizationResponse(BaseModel):
     id: int
     name: str
+
+def normalize_task_title(value: str) -> str:
+    normalized_value = value.strip()
+
+    if not normalized_value:
+        raise ValueError(
+            "Title cannot be blank"
+        )
+
+    return normalized_value

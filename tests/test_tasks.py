@@ -119,3 +119,30 @@ def test_update_rejects_null_fields(
     )
 
     assert response.status_code == 422
+
+def test_create_task_rejects_blank_title(client):
+    response = client.post(
+        "/organizations/1/tasks",
+        json={"title": "   "},
+    )
+
+    assert response.status_code == 422
+
+def test_update_task_rejects_blank_title(client):
+    response = client.patch(
+        "/organizations/1/tasks/1",
+        json={"title": "   "},
+    )
+
+    assert response.status_code == 422
+
+def test_create_task_strips_title(client):
+    response = client.post(
+        "/organizations/1/tasks",
+        json={
+            "title": "   Prepare release   ",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["title"] == "Prepare release"
