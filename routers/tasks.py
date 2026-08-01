@@ -72,6 +72,7 @@ def create_task(organization_id:int, task:TaskCreate):
     organization_id = organization_id,
     title=task.title,
     status=task.status,
+    priority=task.priority,
     )
 
 
