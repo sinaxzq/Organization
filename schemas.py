@@ -1,5 +1,6 @@
 from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
+from datetime import date
 
 TaskStatus = Literal["todo", "in_progress", "done"]
 
@@ -15,6 +16,7 @@ class TaskCreate(BaseModel):
         ge=0,
         le=5,
     )
+    due_date: date | None = None
 
     @field_validator(
         "title",
@@ -36,6 +38,7 @@ class TaskUpdate(BaseModel):
         ge=0,
         le=5,
     )
+    due_date: date | None = None
 
     @field_validator(
         "title",
@@ -66,6 +69,7 @@ class TaskResponse(BaseModel):
     title: str
     status: TaskStatus
     priority: int
+    due_date: date | None
 
 
 class TaskListResponse(BaseModel):

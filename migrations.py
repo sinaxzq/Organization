@@ -1,6 +1,6 @@
 import sqlite3
 
-LATEST_SCHEMA_VERSION = 4
+LATEST_SCHEMA_VERSION = 5
 
 
 def migrate_database(
@@ -108,3 +108,13 @@ def migrate_database(
         connection.execute("PRAGMA user_version = 4")
 
         version = 4
+
+    if version < 5:
+        connection.execute("""
+            ALTER TABLE tasks
+            ADD COLUMN due_date TEXT
+            """)
+
+        connection.execute("PRAGMA user_version = 5")
+
+        version = 5

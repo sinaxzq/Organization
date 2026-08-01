@@ -32,4 +32,4 @@ def test_database_schema_version(client: TestClient):
     with database.database_connection() as connection:
         row = connection.execute("PRAGMA user_version").fetchone()
 
-    assert row[0] == 4
+    assert row[0] == 5

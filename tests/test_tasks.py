@@ -252,3 +252,63 @@ def test_rejects_unknown_task_sort(client):
     )
 
     assert response.status_code == 422
+
+
+def test_create_task_has_no_due_date_by_default(client):
+    response = client.post(
+        "/organizations/1/tasks",
+        json={"title": "No deadline"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["due_date"] is None
+
+
+def test_create_task_with_due_date(client):
+    response = client.post(
+        "/organizations/1/tasks",
+        json={
+            "title": "Release",
+            "due_date": "2026-08-15",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["due_date"] == "2026-08-15"
+
+
+def test_rejects_invalid_due_date(client):
+    response = client.post(
+        "/organizations/1/tasks",
+        json={
+            "title": "Impossible deadline",
+            "due_date": "2026-02-30",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_task_due_date(client):
+    response = client.patch(
+        "/organizations/1/tasks/1",
+        json={"due_date": "2026-08-20"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["due_date"] == "2026-08-20"
+
+
+def test_clear_task_due_date(client):
+    client.patch(
+        "/organizations/1/tasks/1",
+        json={"due_date": "2026-08-20"},
+    )
+
+    response = client.patch(
+        "/organizations/1/tasks/1",
+        json={"due_date": None},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["due_date"] is None
