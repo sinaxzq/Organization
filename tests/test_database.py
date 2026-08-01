@@ -3,6 +3,7 @@ import sqlite3
 import pytest
 import database
 
+
 def test_database_transaction_rolls_back(client: TestClient):
     with pytest.raises(sqlite3.IntegrityError):
         with database.database_transaction() as connection:
@@ -27,11 +28,8 @@ def test_database_transaction_rolls_back(client: TestClient):
     assert len(stored_tasks) == 2
 
 
-
 def test_database_schema_version(client: TestClient):
     with database.database_connection() as connection:
-        row = connection.execute(
-            "PRAGMA user_version"
-        ).fetchone()
+        row = connection.execute("PRAGMA user_version").fetchone()
 
     assert row[0] == 4

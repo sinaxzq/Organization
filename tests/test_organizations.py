@@ -3,6 +3,7 @@ import database
 import pytest
 import sqlite3
 
+
 def test_default_organization_created(client: TestClient):
     with database.database_connection() as connection:
         row = connection.execute(
@@ -20,17 +21,17 @@ def test_default_organization_created(client: TestClient):
         "name": "Default Organization",
     }
 
+
 def test_tasks_belong_to_default_organization(client: TestClient):
     with database.database_connection() as connection:
-        rows = connection.execute(
-            """
+        rows = connection.execute("""
             SELECT organization_id
             FROM tasks
             ORDER BY id
-            """
-        ).fetchall()
+            """).fetchall()
 
     assert [row["organization_id"] for row in rows] == [1, 1]
+
 
 def test_task_rejects_unknown_organization(client: TestClient):
     with pytest.raises(sqlite3.IntegrityError):
@@ -46,6 +47,7 @@ def test_task_rejects_unknown_organization(client: TestClient):
                 """,
                 (999, "Некорректная задача", "todo"),
             )
+
 
 def test_create_organization(client: TestClient):
     response = client.post(
@@ -85,6 +87,7 @@ def test_rejects_duplicate_organization_name(client: TestClient):
         "detail": "Organization name already exists",
     }
 
+
 def test_cannot_access_task_from_another_organization(client: TestClient):
     create_response = client.post(
         "/organizations",
@@ -93,11 +96,10 @@ def test_cannot_access_task_from_another_organization(client: TestClient):
 
     assert create_response.status_code == 201
 
-    response = client.get(
-        "/organizations/2/tasks/1"
-    )
+    response = client.get("/organizations/2/tasks/1")
 
     assert response.status_code == 404
+
 
 def test_get_organization(client: TestClient):
     response = client.get("/organizations/1")
@@ -108,6 +110,7 @@ def test_get_organization(client: TestClient):
         "name": "Default Organization",
     }
 
+
 def test_get_missing_organization(client: TestClient):
     response = client.get("/organizations/999")
 
@@ -116,15 +119,15 @@ def test_get_missing_organization(client: TestClient):
         "detail": "Organization not found",
     }
 
+
 def test_cannot_get_tasks_for_missing_organization(client: TestClient):
-    response = client.get(
-        "/organizations/999/tasks"
-    )
+    response = client.get("/organizations/999/tasks")
 
     assert response.status_code == 404
     assert response.json() == {
         "detail": "Organization not found",
     }
+
 
 def test_cannot_create_task_for_missing_organization(client: TestClient):
     response = client.post(

@@ -4,10 +4,12 @@ from collections.abc import Generator
 from contextlib import contextmanager
 import migrations
 
-DATABASE_PATH =  Path(__file__).with_name("operations.db")
+DATABASE_PATH = Path(__file__).with_name("operations.db")
+
 
 def casefold_text(value: str) -> str:
     return value.casefold()
+
 
 def connect_database() -> sqlite3.Connection:
     connection = sqlite3.connect(DATABASE_PATH)
@@ -15,13 +17,14 @@ def connect_database() -> sqlite3.Connection:
     connection.row_factory = sqlite3.Row
 
     connection.create_function(
-    "CASEFOLD",
-    1,
-    casefold_text,
-    deterministic=True,
+        "CASEFOLD",
+        1,
+        casefold_text,
+        deterministic=True,
     )
-    
+
     return connection
+
 
 @contextmanager
 def database_connection() -> Generator[sqlite3.Connection]:
@@ -32,20 +35,25 @@ def database_connection() -> Generator[sqlite3.Connection]:
     finally:
         connection.close()
 
+
 @contextmanager
 def database_transaction() -> Generator[sqlite3.Connection]:
     with database_connection() as connection:
         with connection:
             yield connection
 
+
 def init_database() -> None:
     with database_transaction() as connection:
         migrations.migrate_database(connection)
+
 
 def get_tasks(
     organization_id: int,
     status: str | None = None,
     q: str | None = None,
+    priority: int | None = None,
+    sort: str = "id",
     limit: int = 10,
     offset: int = 0,
 ) -> tuple[list[dict], int]:
@@ -57,15 +65,25 @@ def get_tasks(
         parameters.append(status)
 
     if q is not None:
-        conditions.append(
-            "instr(CASEFOLD(title), CASEFOLD(?)) > 0"
-        )
+        conditions.append("instr(CASEFOLD(title), CASEFOLD(?)) > 0")
         parameters.append(q)
+
+    if priority is not None:
+        conditions.append("priority = ?")
+        parameters.append(priority)
 
     where_clause = ""
 
     if conditions:
         where_clause = "WHERE " + " AND ".join(conditions)
+
+    order_by_clauses = {
+        "id": "id ASC",
+        "priority_asc": "priority ASC, id ASC",
+        "priority_desc": "priority DESC, id ASC",
+    }
+
+    order_by_clause = order_by_clauses[sort]
 
     with database_connection() as connection:
         total_row = connection.execute(
@@ -82,7 +100,7 @@ def get_tasks(
             SELECT id, title, status, priority
             FROM tasks
             {where_clause}
-            ORDER BY id
+            ORDER BY {order_by_clause}
             LIMIT ? OFFSET ?
             """,
             [*parameters, limit, offset],
@@ -96,6 +114,7 @@ def get_tasks(
         total_row["total"],
     )
 
+
 def get_task(
     organization_id: int,
     task_id: int,
@@ -108,13 +127,14 @@ def get_task(
             WHERE id = ?
                 AND organization_id = ?
             """,
-            (task_id,organization_id),
+            (task_id, organization_id),
         ).fetchone()
 
     if row is None:
         return None
 
     return dict(row)
+
 
 def create_task(
     organization_id: int,
@@ -143,13 +163,14 @@ def create_task(
             WHERE id = ? 
                 AND organization_id = ?
             """,
-            (task_id,organization_id),
+            (task_id, organization_id),
         ).fetchone()
 
         if row is None:
             raise RuntimeError("Created task was not found")
 
         return dict(row)
+
 
 def update_task(
     organization_id: int,
@@ -184,6 +205,7 @@ def update_task(
 
     return get_task(organization_id, task_id)
 
+
 def delete_task(organization_id: int, task_id: int) -> bool:
     with database_transaction() as connection:
         cursor = connection.execute(
@@ -191,20 +213,19 @@ def delete_task(organization_id: int, task_id: int) -> bool:
             DELETE FROM tasks
             WHERE id = ? AND organization_id = ?
             """,
-            (task_id,organization_id),
+            (task_id, organization_id),
         )
 
         return cursor.rowcount > 0
 
+
 def get_organizations() -> list[dict]:
     with database_connection() as connection:
-        rows = connection.execute(
-            """
+        rows = connection.execute("""
             SELECT id, name
             FROM organizations
             ORDER BY id
-            """
-        ).fetchall()
+            """).fetchall()
 
     return [dict(row) for row in rows]
 
@@ -226,9 +247,7 @@ def create_organization(name: str) -> dict | None:
         organization_id = cursor.lastrowid
 
         if organization_id is None:
-            raise RuntimeError(
-                "SQLite did not return an organization id"
-            )
+            raise RuntimeError("SQLite did not return an organization id")
 
         row = connection.execute(
             """
@@ -240,11 +259,10 @@ def create_organization(name: str) -> dict | None:
         ).fetchone()
 
         if row is None:
-            raise RuntimeError(
-                "Created organization was not found"
-            )
+            raise RuntimeError("Created organization was not found")
 
         return dict(row)
+
 
 def get_organization(
     organization_id: int,
@@ -263,4 +281,3 @@ def get_organization(
         return None
 
     return dict(row)
-
