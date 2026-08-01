@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 import pytest
 
+
 def test_get_existing_task(client: TestClient):
     response = client.get("/organizations/1/tasks/1")
 
@@ -11,6 +12,7 @@ def test_get_existing_task(client: TestClient):
     assert task["id"] == 1
     assert "title" in task
     assert "status" in task
+
 
 def test_get_missing_task(client: TestClient):
     response = client.get("/organizations/1/tasks/999999")
@@ -24,9 +26,10 @@ def test_rejects_invalid_status_filter(client: TestClient):
 
     assert response.status_code == 422
 
+
 def test_create_task(client: TestClient):
     response = client.post(
-        "/organizations/1/tasks", 
+        "/organizations/1/tasks",
         json={
             "title": "Написать автоматические тесты",
             "status": "todo",
@@ -46,11 +49,15 @@ def test_create_task(client: TestClient):
     assert get_response.status_code == 200
     assert get_response.json() == created_task
 
+
 def test_update_task(client: TestClient):
-    response = client.patch("/organizations/1/tasks/1", json={
-                "status": "done",
-            },)
-    
+    response = client.patch(
+        "/organizations/1/tasks/1",
+        json={
+            "status": "done",
+        },
+    )
+
     assert response.status_code == 200
 
     updated_task = response.json()
@@ -58,6 +65,7 @@ def test_update_task(client: TestClient):
     assert updated_task["id"] == 1
     assert updated_task["status"] == "done"
     assert updated_task["title"] == "Настроить backend"
+
 
 def test_delete_task(client: TestClient):
     response = client.delete("/organizations/1/tasks/1")
@@ -68,6 +76,7 @@ def test_delete_task(client: TestClient):
     get_response = client.get("/organizations/1/tasks/1")
 
     assert get_response.status_code == 404
+
 
 def test_search_tasks_is_case_insensitive(client: TestClient):
     response = client.get(
@@ -82,6 +91,7 @@ def test_search_tasks_is_case_insensitive(client: TestClient):
     assert body["count"] == 1
     assert body["total"] == 1
     assert body["items"][0]["title"] == "Настроить backend"
+
 
 def test_tasks_pagination(client: TestClient):
     response = client.get(
@@ -102,6 +112,7 @@ def test_tasks_pagination(client: TestClient):
     assert body["offset"] == 1
     assert body["items"][0]["id"] == 2
 
+
 @pytest.mark.parametrize(
     "payload",
     [
@@ -120,6 +131,7 @@ def test_update_rejects_null_fields(
 
     assert response.status_code == 422
 
+
 def test_create_task_rejects_blank_title(client):
     response = client.post(
         "/organizations/1/tasks",
@@ -128,6 +140,7 @@ def test_create_task_rejects_blank_title(client):
 
     assert response.status_code == 422
 
+
 def test_update_task_rejects_blank_title(client):
     response = client.patch(
         "/organizations/1/tasks/1",
@@ -135,6 +148,7 @@ def test_update_task_rejects_blank_title(client):
     )
 
     assert response.status_code == 422
+
 
 def test_create_task_strips_title(client):
     response = client.post(
@@ -147,6 +161,7 @@ def test_create_task_strips_title(client):
     assert response.status_code == 201
     assert response.json()["title"] == "Prepare release"
 
+
 def test_create_task_has_default_priority(client):
     response = client.post(
         "/organizations/1/tasks",
@@ -155,6 +170,7 @@ def test_create_task_has_default_priority(client):
 
     assert response.status_code == 201
     assert response.json()["priority"] == 0
+
 
 def test_create_task_with_priority(client):
     response = client.post(
@@ -167,6 +183,7 @@ def test_create_task_with_priority(client):
 
     assert response.status_code == 201
     assert response.json()["priority"] == 5
+
 
 @pytest.mark.parametrize(
     "priority",
@@ -182,6 +199,56 @@ def test_rejects_invalid_task_priority(
             "title": "Invalid priority",
             "priority": priority,
         },
+    )
+
+    assert response.status_code == 422
+
+
+def test_filter_tasks_by_priority(client):
+    client.post(
+        "/organizations/1/tasks",
+        json={
+            "title": "Important",
+            "priority": 5,
+        },
+    )
+
+    response = client.get(
+        "/organizations/1/tasks",
+        params={"priority": 5},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["priority"] == 5
+
+
+def test_sort_tasks_by_priority_desc(client):
+    client.post(
+        "/organizations/1/tasks",
+        json={
+            "title": "Important",
+            "priority": 5,
+        },
+    )
+
+    response = client.get(
+        "/organizations/1/tasks",
+        params={"sort": "priority_desc"},
+    )
+
+    priorities = [task["priority"] for task in response.json()["items"]]
+
+    assert priorities == sorted(
+        priorities,
+        reverse=True,
+    )
+
+
+def test_rejects_unknown_task_sort(client):
+    response = client.get(
+        "/organizations/1/tasks",
+        params={"sort": "DROP TABLE tasks"},
     )
 
     assert response.status_code == 422

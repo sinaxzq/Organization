@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, field_validator
 
 TaskStatus = Literal["todo", "in_progress", "done"]
 
+
 class TaskCreate(BaseModel):
     title: str = Field(
         min_length=1,
@@ -10,22 +11,18 @@ class TaskCreate(BaseModel):
     )
     status: TaskStatus = "todo"
     priority: int = Field(
-    default=0,
-    ge=0,
-    le=5,
+        default=0,
+        ge=0,
+        le=5,
     )
 
     @field_validator(
         "title",
     )
     @classmethod
-    def reject_dull(
-        cls,
-        value: str
-    ) -> str:
+    def reject_dull(cls, value: str) -> str:
         return normalize_task_title(value)
 
-        
 
 class TaskUpdate(BaseModel):
     title: str | None = Field(
@@ -35,10 +32,11 @@ class TaskUpdate(BaseModel):
     )
     status: TaskStatus | None = None
     priority: int | None = Field(
-    default=None,
-    ge=0,
-    le=5,
+        default=None,
+        ge=0,
+        le=5,
     )
+
     @field_validator(
         "title",
         "status",
@@ -49,9 +47,7 @@ class TaskUpdate(BaseModel):
         value: Any,
     ) -> Any:
         if value is None:
-            raise ValueError(
-                "Field cannot be null"
-            )
+            raise ValueError("Field cannot be null")
 
         return value
 
@@ -64,11 +60,13 @@ class TaskUpdate(BaseModel):
 
         return normalize_task_title(value)
 
+
 class TaskResponse(BaseModel):
     id: int
     title: str
     status: TaskStatus
     priority: int
+
 
 class TaskListResponse(BaseModel):
     items: list[TaskResponse]
@@ -77,20 +75,27 @@ class TaskListResponse(BaseModel):
     limit: int
     offset: int
 
+
 class OrganizationCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
+
 
 class OrganizationResponse(BaseModel):
     id: int
     name: str
 
+
 def normalize_task_title(value: str) -> str:
     normalized_value = value.strip()
 
     if not normalized_value:
-        raise ValueError(
-            "Title cannot be blank"
-        )
+        raise ValueError("Title cannot be blank")
 
     return normalized_value
 
+
+TaskSort = Literal[
+    "id",
+    "priority_asc",
+    "priority_desc",
+]

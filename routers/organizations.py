@@ -9,7 +9,6 @@ from schemas import (
     OrganizationResponse,
 )
 
-
 router = APIRouter(
     prefix="/organizations",
     tags=["organizations"],
@@ -23,9 +22,7 @@ router = APIRouter(
 def get_organization(
     organization_id: int,
 ):
-    return get_organization_or_404(
-        organization_id
-    )
+    return get_organization_or_404(organization_id)
 
 
 @router.post(
@@ -34,9 +31,7 @@ def get_organization(
     response_model=OrganizationResponse,
 )
 def create_organization(organization: OrganizationCreate):
-    created_organization = database.create_organization(
-        organization.name
-    )
+    created_organization = database.create_organization(organization.name)
 
     if created_organization is None:
         raise HTTPException(
@@ -50,7 +45,6 @@ def create_organization(organization: OrganizationCreate):
 @router.get(
     "",
     response_model=list[OrganizationResponse],
-    
 )
 def get_organizations():
     return database.get_organizations()

@@ -12,6 +12,7 @@ from schemas import (
     TaskResponse,
     TaskStatus,
     TaskUpdate,
+    TaskSort,
 )
 
 router = APIRouter(
@@ -24,38 +25,47 @@ router = APIRouter(
 
 
 @router.get("", response_model=TaskListResponse)
-def get_tasks(organization_id: int,
-              status: TaskStatus | None = None,
-              limit: int = Query(default=10, ge=1, le=100),
-              offset: int = Query(default=0, ge=0),
-              q: str | None = Query(
-                  default=None,
-                  min_length=1,
-                  max_length=100,
-              )
-              ):
+def get_tasks(
+    organization_id: int,
+    status: TaskStatus | None = None,
+    q: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=100,
+    ),
+    priority: int | None = Query(
+        default=None,
+        ge=0,
+        le=5,
+    ),
+    sort: TaskSort = "id",
+    limit: int = Query(default=10, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
 
     page_tasks, total = database.get_tasks(
-    organization_id=organization_id,
-    status=status,
-    q=q,
-    limit=limit,
-    offset=offset,
+        organization_id=organization_id,
+        status=status,
+        q=q,
+        priority=priority,
+        sort=sort,
+        limit=limit,
+        offset=offset,
     )
-    
+
     return {
-    "items": page_tasks,
-    "count": len(page_tasks),
-    "total": total,
-    "limit": limit,
-    "offset": offset,
+        "items": page_tasks,
+        "count": len(page_tasks),
+        "total": total,
+        "limit": limit,
+        "offset": offset,
     }
 
 
 @router.get(
     "/{task_id}",
     response_model=TaskResponse,
-    )
+)
 def get_task(
     organization_id: int,
     task_id: int,
@@ -66,13 +76,17 @@ def get_task(
     )
 
 
-@router.post("", status_code=201, response_model=TaskResponse,)
-def create_task(organization_id:int, task:TaskCreate):
+@router.post(
+    "",
+    status_code=201,
+    response_model=TaskResponse,
+)
+def create_task(organization_id: int, task: TaskCreate):
     return database.create_task(
-    organization_id = organization_id,
-    title=task.title,
-    status=task.status,
-    priority=task.priority,
+        organization_id=organization_id,
+        title=task.title,
+        status=task.status,
+        priority=task.priority,
     )
 
 
@@ -104,5 +118,3 @@ def delete_task(organization_id: int, task_id: int):
             status_code=404,
             detail="Task not found",
         )
-
-    
