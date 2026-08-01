@@ -97,7 +97,7 @@ def get_tasks(
 
         rows = connection.execute(
             f"""
-            SELECT id, title, status, priority
+            SELECT id, title, status, priority, due_date
             FROM tasks
             {where_clause}
             ORDER BY {order_by_clause}
@@ -122,7 +122,7 @@ def get_task(
     with database_transaction() as connection:
         row = connection.execute(
             """
-            SELECT id, title, status, priority
+            SELECT id, title, status, priority, due_date
             FROM tasks
             WHERE id = ?
                 AND organization_id = ?
@@ -141,14 +141,15 @@ def create_task(
     title: str,
     status: str,
     priority: int,
+    due_date: str | None,
 ) -> dict:
     with database_transaction() as connection:
         cursor = connection.execute(
             """
-            INSERT INTO tasks (organization_id, title, status, priority)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO tasks (organization_id, title, status, priority, due_date)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (organization_id, title, status, priority),
+            (organization_id, title, status, priority, due_date),
         )
 
         task_id = cursor.lastrowid
@@ -158,7 +159,7 @@ def create_task(
 
         row = connection.execute(
             """
-            SELECT id, organization_id, title, status, priority
+            SELECT id, organization_id, title, status, priority, due_date
             FROM tasks
             WHERE id = ? 
                 AND organization_id = ?
@@ -180,7 +181,7 @@ def update_task(
     assignments: list[str] = []
     values: list[object] = []
 
-    for field in ("title", "status", "priority"):
+    for field in ("title", "status", "priority", "due_date"):
         if field in update_data:
             assignments.append(f"{field} = ?")
             values.append(update_data[field])

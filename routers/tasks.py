@@ -87,12 +87,16 @@ def create_task(organization_id: int, task: TaskCreate):
         title=task.title,
         status=task.status,
         priority=task.priority,
+        due_date=(task.due_date.isoformat() if task.due_date is not None else None),
     )
 
 
 @router.patch("/{task_id}", response_model=TaskResponse)
 def update_task(organization_id: int, task_id: int, update: TaskUpdate):
-    update_data = update.model_dump(exclude_unset=True)
+    update_data = update.model_dump(
+        exclude_unset=True,
+        mode="json",
+    )
 
     updated_task = database.update_task(
         organization_id=organization_id,
