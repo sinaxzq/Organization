@@ -1,6 +1,6 @@
 import sqlite3
 
-LATEST_SCHEMA_VERSION = 5
+LATEST_SCHEMA_VERSION = 6
 
 
 def migrate_database(
@@ -118,3 +118,20 @@ def migrate_database(
         connection.execute("PRAGMA user_version = 5")
 
         version = 5
+
+    if version < 6:
+        connection.execute("""
+            CREATE TABLE organization_members (
+                id INTEGER PRIMARY KEY,
+                organization_id INTEGER NOT NULL
+                    REFERENCES organizations(id)
+                    ON DELETE CASCADE,
+                name TEXT NOT NULL
+                    CHECK(length(name) BETWEEN 1 AND 200),
+                UNIQUE(organization_id, name)
+            )
+            """)
+
+        connection.execute("PRAGMA user_version = 6")
+
+        version = 6

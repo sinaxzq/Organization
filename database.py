@@ -282,3 +282,62 @@ def get_organization(
         return None
 
     return dict(row)
+
+
+def get_members(
+    organization_id: int,
+) -> list[dict]:
+    with database_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT id, name
+            FROM organization_members
+            WHERE organization_id = ?
+            ORDER BY id
+            """,
+            (organization_id,),
+        ).fetchall()
+
+    return [dict(row) for row in rows]
+
+
+def create_member(
+    organization_id: int,
+    name: str,
+) -> dict | None:
+    with database_transaction() as connection:
+        cursor = connection.execute(
+            """
+            INSERT INTO organization_members (
+                organization_id,
+                name
+            )
+            VALUES (?, ?)
+            ON CONFLICT(organization_id, name)
+            DO NOTHING
+            """,
+            (organization_id, name),
+        )
+
+        if cursor.rowcount == 0:
+            return None
+
+        member_id = cursor.lastrowid
+
+        if member_id is None:
+            raise RuntimeError("SQLite did not return a member id")
+
+        row = connection.execute(
+            """
+            SELECT id, name
+            FROM organization_members
+            WHERE id = ?
+              AND organization_id = ?
+            """,
+            (member_id, organization_id),
+        ).fetchone()
+
+        if row is None:
+            raise RuntimeError("Created member was not found")
+
+        return dict(row)

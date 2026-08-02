@@ -103,3 +103,24 @@ TaskSort = Literal[
     "priority_asc",
     "priority_desc",
 ]
+
+
+class MemberCreate(BaseModel):
+    name: str = Field(
+        min_length=1,
+        max_length=200,
+    )
+
+    @field_validator("name")
+    def normalize_name(value: str) -> str:
+        normalized = value.strip()
+
+        if not normalized:
+            raise ValueError("Member name cannot be blank")
+
+        return normalized
+
+
+class MemberResponse(BaseModel):
+    id: int
+    name: str
