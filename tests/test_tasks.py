@@ -312,3 +312,90 @@ def test_clear_task_due_date(client):
 
     assert response.status_code == 200
     assert response.json()["due_date"] is None
+
+
+def test_create_task_with_assignee(client):
+    member_response = client.post(
+        "/organizations/1/members",
+        json={"name": "Alice"},
+    )
+
+    member_id = member_response.json()["id"]
+
+    response = client.post(
+        "/organizations/1/tasks",
+        json={
+            "title": "Assigned task",
+            "assignee_id": member_id,
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["assignee_id"] == member_id
+
+
+def test_assign_task_to_member(client):
+    member_response = client.post(
+        "/organizations/1/members",
+        json={"name": "Alice"},
+    )
+
+    member_id = member_response.json()["id"]
+
+    response = client.patch(
+        "/organizations/1/tasks/1",
+        json={"assignee_id": member_id},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["assignee_id"] == member_id
+
+
+def test_clear_task_assignee(client):
+    member_response = client.post(
+        "/organizations/1/members",
+        json={"name": "Alice"},
+    )
+
+    member_id = member_response.json()["id"]
+
+    client.patch(
+        "/organizations/1/tasks/1",
+        json={"assignee_id": member_id},
+    )
+
+    response = client.patch(
+        "/organizations/1/tasks/1",
+        json={"assignee_id": None},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["assignee_id"] is None
+
+
+def test_cannot_assign_member_from_another_organization(
+    client,
+):
+    organization_response = client.post(
+        "/organizations",
+        json={"name": "Second Organization"},
+    )
+
+    organization_id = organization_response.json()["id"]
+
+    member_response = client.post(
+        f"/organizations/{organization_id}/members",
+        json={"name": "Bob"},
+    )
+
+    member_id = member_response.json()["id"]
+
+    response = client.patch(
+        "/organizations/1/tasks/1",
+        json={"assignee_id": member_id},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": ("Assignee does not belong " "to this organization"),
+    }

@@ -17,6 +17,10 @@ class TaskCreate(BaseModel):
         le=5,
     )
     due_date: date | None = None
+    assignee_id: int | None = Field(
+        default=None,
+        ge=1,
+    )
 
     @field_validator(
         "title",
@@ -39,6 +43,10 @@ class TaskUpdate(BaseModel):
         le=5,
     )
     due_date: date | None = None
+    assignee_id: int | None = Field(
+        default=None,
+        ge=1,
+    )
 
     @field_validator(
         "title",
@@ -70,6 +78,7 @@ class TaskResponse(BaseModel):
     status: TaskStatus
     priority: int
     due_date: date | None
+    assignee_id: int | None
 
 
 class TaskListResponse(BaseModel):

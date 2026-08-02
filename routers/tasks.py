@@ -82,12 +82,18 @@ def get_task(
     response_model=TaskResponse,
 )
 def create_task(organization_id: int, task: TaskCreate):
+    validate_assignee(
+        organization_id=organization_id,
+        assignee_id=task.assignee_id,
+    )
+
     return database.create_task(
         organization_id=organization_id,
         title=task.title,
         status=task.status,
         priority=task.priority,
         due_date=(task.due_date.isoformat() if task.due_date is not None else None),
+        assignee_id=task.assignee_id,
     )
 
 
@@ -97,6 +103,12 @@ def update_task(organization_id: int, task_id: int, update: TaskUpdate):
         exclude_unset=True,
         mode="json",
     )
+
+    if "assignee_id" in update_data:
+        validate_assignee(
+            organization_id=organization_id,
+            assignee_id=update_data["assignee_id"],
+        )
 
     updated_task = database.update_task(
         organization_id=organization_id,
@@ -121,4 +133,23 @@ def delete_task(organization_id: int, task_id: int):
         raise HTTPException(
             status_code=404,
             detail="Task not found",
+        )
+
+
+def validate_assignee(
+    organization_id: int,
+    assignee_id: int | None,
+) -> None:
+    if assignee_id is None:
+        return
+
+    member = database.get_member(
+        organization_id=organization_id,
+        member_id=assignee_id,
+    )
+
+    if member is None:
+        raise HTTPException(
+            status_code=422,
+            detail=("Assignee does not belong " "to this organization"),
         )
