@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 import database
 
-from routers import organizations, tasks
+from routers import organizations, tasks, members
 
 
 @asynccontextmanager
@@ -17,6 +17,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(organizations.router)
 app.include_router(tasks.router)
+app.include_router(members.router)
 
 
 @app.get("/")
