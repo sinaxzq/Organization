@@ -97,7 +97,7 @@ def get_tasks(
 
         rows = connection.execute(
             f"""
-            SELECT id, title, status, priority, due_date
+            SELECT id, title, status, priority, due_date, assignee_id
             FROM tasks
             {where_clause}
             ORDER BY {order_by_clause}
@@ -122,7 +122,7 @@ def get_task(
     with database_transaction() as connection:
         row = connection.execute(
             """
-            SELECT id, title, status, priority, due_date
+            SELECT id, title, status, priority, due_date, assignee_id
             FROM tasks
             WHERE id = ?
                 AND organization_id = ?
@@ -142,14 +142,15 @@ def create_task(
     status: str,
     priority: int,
     due_date: str | None,
+    assignee_id: int | None,
 ) -> dict:
     with database_transaction() as connection:
         cursor = connection.execute(
             """
-            INSERT INTO tasks (organization_id, title, status, priority, due_date)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO tasks (organization_id, title, status, priority, due_date, assignee_id)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (organization_id, title, status, priority, due_date),
+            (organization_id, title, status, priority, due_date, assignee_id),
         )
 
         task_id = cursor.lastrowid
@@ -159,7 +160,7 @@ def create_task(
 
         row = connection.execute(
             """
-            SELECT id, organization_id, title, status, priority, due_date
+            SELECT id, organization_id, title, status, priority, due_date, assignee_id
             FROM tasks
             WHERE id = ? 
                 AND organization_id = ?
@@ -181,7 +182,7 @@ def update_task(
     assignments: list[str] = []
     values: list[object] = []
 
-    for field in ("title", "status", "priority", "due_date"):
+    for field in ("title", "status", "priority", "due_date", "assignee_id"):
         if field in update_data:
             assignments.append(f"{field} = ?")
             values.append(update_data[field])
@@ -341,3 +342,27 @@ def create_member(
             raise RuntimeError("Created member was not found")
 
         return dict(row)
+
+
+def get_member(
+    organization_id: int,
+    member_id: int,
+) -> dict | None:
+    with database_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT id, name
+            FROM organization_members
+            WHERE id = ?
+              AND organization_id = ?
+            """,
+            (
+                member_id,
+                organization_id,
+            ),
+        ).fetchone()
+
+    if row is None:
+        return None
+
+    return dict(row)
