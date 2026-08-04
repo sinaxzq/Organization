@@ -399,3 +399,34 @@ def test_cannot_assign_member_from_another_organization(
     assert response.json() == {
         "detail": ("Assignee does not belong " "to this organization"),
     }
+
+
+def test_filter_tasks_by_assignee(client):
+    member_response = client.post(
+        "/organizations/1/members",
+        json={"name": "Alice"},
+    )
+
+    member_id = member_response.json()["id"]
+
+    assigned_response = client.post(
+        "/organizations/1/tasks",
+        json={
+            "title": "Alice task",
+            "assignee_id": member_id,
+        },
+    )
+
+    client.post(
+        "/organizations/1/tasks",
+        json={"title": "Unassigned task"},
+    )
+
+    response = client.get(
+        "/organizations/1/tasks",
+        params={"assignee_id": member_id},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["id"] == (assigned_response.json()["id"])

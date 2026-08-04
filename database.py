@@ -53,6 +53,7 @@ def get_tasks(
     status: str | None = None,
     q: str | None = None,
     priority: int | None = None,
+    assignee_id: int | None = None,
     sort: str = "id",
     limit: int = 10,
     offset: int = 0,
@@ -71,6 +72,10 @@ def get_tasks(
     if priority is not None:
         conditions.append("priority = ?")
         parameters.append(priority)
+
+    if assignee_id is not None:
+        conditions.append("assignee_id = ?")
+        parameters.append(assignee_id)
 
     where_clause = ""
 

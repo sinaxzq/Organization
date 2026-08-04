@@ -1,6 +1,6 @@
 import sqlite3
 
-LATEST_SCHEMA_VERSION = 7
+LATEST_SCHEMA_VERSION = 8
 
 
 def migrate_database(
@@ -217,3 +217,13 @@ def migrate_database(
 
         connection.execute("PRAGMA user_version = 7")
         version = 7
+
+    if version < 8:
+        connection.execute("""
+            DROP INDEX IF EXISTS
+            idx_tasks_organization_id
+            """)
+
+        connection.execute("PRAGMA user_version = 8")
+
+        version = 8
