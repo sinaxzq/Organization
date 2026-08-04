@@ -38,6 +38,10 @@ def get_tasks(
         ge=0,
         le=5,
     ),
+    assignee_id: int | None = Query(
+        default=None,
+        ge=1,
+    ),
     sort: TaskSort = "id",
     limit: int = Query(default=10, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -48,6 +52,7 @@ def get_tasks(
         status=status,
         q=q,
         priority=priority,
+        assignee_id=assignee_id,
         sort=sort,
         limit=limit,
         offset=offset,
@@ -151,5 +156,5 @@ def validate_assignee(
     if member is None:
         raise HTTPException(
             status_code=422,
-            detail=("Assignee does not belong " "to this organization"),
+            detail=("Assignee does not belong to this organization"),
         )

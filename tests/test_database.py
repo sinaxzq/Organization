@@ -32,7 +32,7 @@ def test_database_schema_version(client: TestClient):
     with database.database_connection() as connection:
         row = connection.execute("PRAGMA user_version").fetchone()
 
-    assert row[0] == 7
+    assert row[0] == 8
 
 
 def test_database_rejects_cross_organization_assignee():
@@ -73,3 +73,13 @@ def test_database_rejects_cross_organization_assignee():
                     1,
                 ),
             )
+
+
+def test_task_indexes():
+    with database.database_connection() as connection:
+        rows = connection.execute("PRAGMA index_list('tasks')").fetchall()
+
+    index_names = {row["name"] for row in rows}
+
+    assert "idx_tasks_assignee" in index_names
+    assert "idx_tasks_organization_id" not in index_names
