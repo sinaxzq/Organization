@@ -401,6 +401,34 @@ def test_cannot_assign_member_from_another_organization(
     }
 
 
+def test_create_task_in_organization_with_assigned_member_from_another_organization(
+    client,
+):
+    organization_response = client.post(
+        "/organizations",
+        json={"name": "Second Organization"},
+    )
+
+    organization_id = organization_response.json()["id"]
+
+    member_response = client.post(
+        f"/organizations/{organization_id}/members",
+        json={"name": "Bob"},
+    )
+
+    member_id = member_response.json()["id"]
+
+    response = client.post(
+        "/organizations/1/tasks",
+        json={"title": "Test everything", "assignee_id": member_id},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": ("Assignee does not belong " "to this organization"),
+    }
+
+
 def test_filter_tasks_by_assignee(client):
     member_response = client.post(
         "/organizations/1/members",
@@ -430,3 +458,9 @@ def test_filter_tasks_by_assignee(client):
     assert response.status_code == 200
     assert response.json()["total"] == 1
     assert response.json()["items"][0]["id"] == (assigned_response.json()["id"])
+
+
+def test_get_tasks_for_missing_organization(client):
+    response = client.get("/organizations/999/tasks")
+
+    assert response.status_code == 404
