@@ -464,3 +464,164 @@ def test_get_tasks_for_missing_organization(client):
     response = client.get("/organizations/999/tasks")
 
     assert response.status_code == 404
+
+
+def test_get_tasks_due_before(client):
+    task_response = client.post(
+        "/organizations/1/tasks",
+        json={"title": "Task due some date", "due_date": "2026-11-20"},
+    )
+
+    response = client.get(
+        "/organizations/1/tasks",
+        params={"due_before": "2026-11-21"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["id"] == (task_response.json()["id"])
+
+
+def test_due_before_excludes_equal_later_and_null_dates(client):
+    dates = [
+        "2026-11-19",
+        "2026-11-20",
+        "2026-11-21",
+        None,
+    ]
+
+    task_ids = []
+
+    for due_date in dates:
+        response = client.post(
+            "/organizations/1/tasks",
+            json={
+                "title": f"Task with date {due_date}",
+                "due_date": due_date,
+            },
+        )
+        assert response.status_code == 201
+        task_ids.append(response.json()["id"])
+
+    response = client.get(
+        "/organizations/1/tasks",
+        params={"due_before": "2026-11-20"},
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["total"] == 1
+    assert body["count"] == 1
+    assert [task["id"] for task in body["items"]] == [task_ids[0]]
+
+
+@pytest.mark.parametrize(
+    "invalid_date",
+    [
+        "invalid",
+        "2026-02-30",
+        "2026-13-01",
+        "",
+    ],
+)
+def test_due_before_rejects_invalid_date(client, invalid_date):
+    response = client.get(
+        "/organizations/1/tasks",
+        params={"due_before": invalid_date},
+    )
+
+    assert response.status_code == 422
+
+
+def test_due_before_combines_with_filters_and_pagination(client):
+    member_response = client.post(
+        "/organizations/1/members",
+        json={"name": "Alice"},
+    )
+    assert member_response.status_code == 201
+
+    member_id = member_response.json()["id"]
+
+    base_task = {
+        "status": "todo",
+        "priority": 5,
+        "due_date": "2026-11-19",
+        "assignee_id": member_id,
+    }
+
+    matching_ids = []
+
+    for title in ("Release A", "Release B"):
+        response = client.post(
+            "/organizations/1/tasks",
+            json={**base_task, "title": title},
+        )
+        assert response.status_code == 201
+        matching_ids.append(response.json()["id"])
+
+    non_matching_tasks = [
+        {"title": "Release done", "status": "done"},
+        {"title": "Release low priority", "priority": 4},
+        {"title": "Other task"},
+        {"title": "Release unassigned", "assignee_id": None},
+    ]
+
+    for task in non_matching_tasks:
+        response = client.post(
+            "/organizations/1/tasks",
+            json={**base_task, **task},
+        )
+        assert response.status_code == 201
+
+    response = client.get(
+        "/organizations/1/tasks",
+        params={
+            "due_before": "2026-11-20",
+            "status": "todo",
+            "priority": 5,
+            "assignee_id": member_id,
+            "q": "release",
+            "sort": "priority_desc",
+            "limit": 1,
+            "offset": 1,
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["total"] == 2
+    assert body["count"] == 1
+    assert body["limit"] == 1
+    assert body["offset"] == 1
+    assert [task["id"] for task in body["items"]] == [matching_ids[1]]
+
+
+def test_tasks_without_due_before_preserve_previous_behavior(client):
+    response = client.post(
+        "/organizations/1/tasks",
+        json={
+            "title": "Task with deadline",
+            "due_date": "2026-11-20",
+        },
+    )
+    assert response.status_code == 201
+
+    created_id = response.json()["id"]
+
+    response = client.get("/organizations/1/tasks")
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["total"] == 3
+    assert body["count"] == 3
+    assert [task["id"] for task in body["items"]] == [
+        1,
+        2,
+        created_id,
+    ]

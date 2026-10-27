@@ -108,9 +108,7 @@ def normalize_task_title(value: str) -> str:
 
 
 TaskSort = Literal[
-    "id",
-    "priority_asc",
-    "priority_desc",
+    "id", "priority_asc", "priority_desc", "due_date_asc", "due_date_desc"
 ]
 
 

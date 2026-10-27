@@ -57,6 +57,7 @@ def get_tasks(
     sort: str = "id",
     limit: int = 10,
     offset: int = 0,
+    due_before: str | None = None,
 ) -> tuple[list[dict], int]:
     conditions = ["organization_id = ?"]
     parameters: list[object] = [organization_id]
@@ -77,6 +78,10 @@ def get_tasks(
         conditions.append("assignee_id = ?")
         parameters.append(assignee_id)
 
+    if due_before is not None:
+        conditions.append("due_date < ?")
+        parameters.append(due_before)
+
     where_clause = ""
 
     if conditions:
@@ -86,6 +91,8 @@ def get_tasks(
         "id": "id ASC",
         "priority_asc": "priority ASC, id ASC",
         "priority_desc": "priority DESC, id ASC",
+        "due_date_asc": "due_date ASC, id ASC",
+        "due_date_desc": "due_date DESC, id ASC",
     }
 
     order_by_clause = order_by_clauses[sort]

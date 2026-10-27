@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
-
+from datetime import date
 import database
 
 from dependencies import (
@@ -45,6 +45,7 @@ def get_tasks(
     sort: TaskSort = "id",
     limit: int = Query(default=10, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    due_before: date | None = None,
 ):
 
     page_tasks, total = database.get_tasks(
@@ -56,6 +57,7 @@ def get_tasks(
         sort=sort,
         limit=limit,
         offset=offset,
+        due_before=(due_before.isoformat() if due_before is not None else None),
     )
 
     return {
