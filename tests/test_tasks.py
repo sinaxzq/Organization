@@ -625,3 +625,130 @@ def test_tasks_without_due_before_preserve_previous_behavior(client):
         2,
         created_id,
     ]
+
+
+@pytest.mark.parametrize(
+    "sort, expected_dates",
+    [
+        (
+            "due_date_asc",
+            [None, None, None, "2026-11-10", "2026-11-20", "2026-11-30"],
+        ),
+        (
+            "due_date_desc",
+            ["2026-11-30", "2026-11-20", "2026-11-10", None, None, None],
+        ),
+    ],
+)
+def test_sort_tasks_by_due_date(client, sort, expected_dates):
+    for due_date in ("2026-11-30", "2026-11-10", "2026-11-20", None):
+        response = client.post(
+            "/organizations/1/tasks",
+            json={
+                "title": f"Task {due_date}",
+                "due_date": due_date,
+            },
+        )
+        assert response.status_code == 201
+
+    response = client.get(
+        "/organizations/1/tasks",
+        params={"sort": sort},
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["total"] == 6
+    assert body["count"] == 6
+    assert [task["due_date"] for task in body["items"]] == expected_dates
+
+
+@pytest.mark.parametrize(
+    "sort, expected_order",
+    [
+        ("due_date_asc", [0, 1, 2]),
+        ("due_date_desc", [2, 0, 1]),
+    ],
+)
+def test_sort_due_date_uses_id_as_tiebreaker(client, sort, expected_order):
+    dates = [
+        "2026-11-20",
+        "2026-11-20",
+        "2026-11-30",
+    ]
+
+    created_ids = []
+
+    for index, due_date in enumerate(dates):
+        response = client.post(
+            "/organizations/1/tasks",
+            json={
+                "title": f"Task {index}",
+                "due_date": due_date,
+            },
+        )
+        assert response.status_code == 201
+        created_ids.append(response.json()["id"])
+
+    response = client.get(
+        "/organizations/1/tasks",
+        params={
+            "sort": sort,
+            "due_before": "2026-12-01",
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["total"] == 3
+    assert [task["id"] for task in body["items"]] == [
+        created_ids[index] for index in expected_order
+    ]
+
+
+@pytest.mark.parametrize(
+    "sort, expected_dates",
+    [
+        ("due_date_asc", ["2026-11-20", "2026-11-25"]),
+        ("due_date_desc", ["2026-11-25", "2026-11-20"]),
+    ],
+)
+def test_due_date_sort_with_pagination(client, sort, expected_dates):
+    for due_date in (
+        "2026-11-30",
+        "2026-11-10",
+        "2026-11-20",
+        "2026-11-25",
+    ):
+        response = client.post(
+            "/organizations/1/tasks",
+            json={
+                "title": f"Task {due_date}",
+                "due_date": due_date,
+            },
+        )
+        assert response.status_code == 201
+
+    response = client.get(
+        "/organizations/1/tasks",
+        params={
+            "sort": sort,
+            "due_before": "2026-12-01",
+            "limit": 2,
+            "offset": 1,
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["total"] == 4
+    assert body["count"] == 2
+    assert body["limit"] == 2
+    assert body["offset"] == 1
+    assert [task["due_date"] for task in body["items"]] == expected_dates
