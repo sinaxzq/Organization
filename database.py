@@ -131,7 +131,7 @@ def get_task(
     organization_id: int,
     task_id: int,
 ) -> dict | None:
-    with database_transaction() as connection:
+    with database_connection() as connection:
         row = connection.execute(
             """
             SELECT id, title, status, priority, due_date, assignee_id
