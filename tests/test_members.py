@@ -8,6 +8,7 @@ def test_create_and_list_member(client):
     assert create_response.json() == {
         "id": 1,
         "name": "Alice",
+        "role": "member",
     }
 
     list_response = client.get("/organizations/1/members")
@@ -17,6 +18,7 @@ def test_create_and_list_member(client):
         {
             "id": 1,
             "name": "Alice",
+            "role": "member",
         }
     ]
 
@@ -66,3 +68,11 @@ def test_cannot_create_member_for_missing_organization(
     )
 
     assert response.status_code == 404
+
+
+def test_create_member_with_wrong_role(client):
+    response = client.post(
+        "/organizations/1/members", json={"name": "TestMember", "role": "wrong_role"}
+    )
+
+    assert response.status_code == 422

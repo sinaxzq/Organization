@@ -34,8 +34,7 @@ def create_member(
     member: MemberCreate,
 ):
     created_member = database.create_member(
-        organization_id=organization_id,
-        name=member.name,
+        organization_id=organization_id, name=member.name, role=member.role
     )
 
     if created_member is None:

@@ -32,7 +32,7 @@ def test_database_schema_version(client: TestClient):
     with database.database_connection() as connection:
         row = connection.execute("PRAGMA user_version").fetchone()
 
-    assert row[0] == 8
+    assert row[0] == 9
 
 
 def test_database_rejects_cross_organization_assignee():

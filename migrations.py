@@ -1,6 +1,6 @@
 import sqlite3
 
-LATEST_SCHEMA_VERSION = 8
+LATEST_SCHEMA_VERSION = 9
 
 
 def migrate_database(
@@ -227,3 +227,37 @@ def migrate_database(
         connection.execute("PRAGMA user_version = 8")
 
         version = 8
+
+    if version < 9:
+        connection.execute("""
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY,
+
+                username TEXT NOT NULL UNIQUE
+                    CHECK(length(username) BETWEEN 1 AND 200),
+                
+                password_hash TEXT NOT NULL
+            )
+            """)
+
+        connection.execute("""
+            ALTER TABLE organization_members
+            ADD COLUMN user_id INTEGER
+                REFERENCES users(id)
+        """)
+
+        connection.execute("""
+            ALTER TABLE organization_members
+            ADD COLUMN role TEXT NOT NULL DEFAULT 'member'
+                CHECK(role IN ('admin', 'member'))
+        """)
+
+        connection.execute("""
+            CREATE UNIQUE INDEX idx_members_org_user
+            ON organization_members(organization_id, user_id)
+            WHERE user_id IS NOT NULL
+        """)
+
+        connection.execute("PRAGMA user_version = 9")
+
+        version = 9

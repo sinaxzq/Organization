@@ -303,7 +303,7 @@ def get_members(
     with database_connection() as connection:
         rows = connection.execute(
             """
-            SELECT id, name
+            SELECT id, name, role
             FROM organization_members
             WHERE organization_id = ?
             ORDER BY id
@@ -314,22 +314,20 @@ def get_members(
     return [dict(row) for row in rows]
 
 
-def create_member(
-    organization_id: int,
-    name: str,
-) -> dict | None:
+def create_member(organization_id: int, name: str, role: str) -> dict | None:
     with database_transaction() as connection:
         cursor = connection.execute(
             """
             INSERT INTO organization_members (
                 organization_id,
-                name
+                name,
+                role
             )
-            VALUES (?, ?)
+            VALUES (?, ?, ?)
             ON CONFLICT(organization_id, name)
             DO NOTHING
             """,
-            (organization_id, name),
+            (organization_id, name, role),
         )
 
         if cursor.rowcount == 0:
@@ -342,7 +340,7 @@ def create_member(
 
         row = connection.execute(
             """
-            SELECT id, name
+            SELECT id, name, role
             FROM organization_members
             WHERE id = ?
               AND organization_id = ?
@@ -363,7 +361,7 @@ def get_member(
     with database_connection() as connection:
         row = connection.execute(
             """
-            SELECT id, name
+            SELECT id, name, role
             FROM organization_members
             WHERE id = ?
               AND organization_id = ?

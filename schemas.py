@@ -111,12 +111,15 @@ TaskSort = Literal[
     "id", "priority_asc", "priority_desc", "due_date_asc", "due_date_desc"
 ]
 
+MemberRole = Literal["member", "admin"]
+
 
 class MemberCreate(BaseModel):
     name: str = Field(
         min_length=1,
         max_length=200,
     )
+    role: MemberRole | None = "member"
 
     @field_validator("name")
     def normalize_name(value: str) -> str:
@@ -129,5 +132,6 @@ class MemberCreate(BaseModel):
 
 
 class MemberResponse(BaseModel):
-    id: int
     name: str
+    id: int
+    role: MemberRole
