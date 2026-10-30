@@ -752,21 +752,3 @@ def test_due_date_sort_with_pagination(client, sort, expected_dates):
     assert body["limit"] == 2
     assert body["offset"] == 1
     assert [task["due_date"] for task in body["items"]] == expected_dates
-
-
-def test_task_duplicate_with_same_organization_and_user(client):
-    org_response = client.post("/organizations", json={"name": "TestOrg"})
-
-    org_id = org_response.json()["id"]
-
-    member_response = client.post(
-        f"/organizations/{org_id}/members",
-        json={"name": "TestMember"},
-    )
-
-    task_response = client.post(
-        "/organizations/1/tasks/",
-        json={"title": "Test task", "assignee_id": member_response.json()["id"]},
-    )
-
-    assert task_response.status_code == 422

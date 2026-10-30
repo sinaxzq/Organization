@@ -83,3 +83,48 @@ def test_task_indexes():
 
     assert "idx_tasks_assignee" in index_names
     assert "idx_tasks_organization_id" not in index_names
+
+
+def test_member_duplicate_with_same_organization_and_user_id(client):
+    organization_response = client.post(
+        "/organizations",
+        json={"name": "TestOrg"},
+    )
+
+    assert organization_response.status_code == 201
+    organization_id = organization_response.json()["id"]
+
+    with database.database_transaction() as connection:
+        user_id = connection.execute(
+            """
+            INSERT INTO users (username, password_hash)
+            VALUES (?, ?)
+            """,
+            ("testuser", "test_hash"),
+        ).lastrowid
+
+        connection.execute(
+            """
+            INSERT INTO organization_members (
+                organization_id,
+                user_id,
+                name
+            )
+            VALUES (?, ?, ?)
+            """,
+            (organization_id, user_id, "Alice"),
+        )
+
+    with pytest.raises(sqlite3.IntegrityError, match="UNIQUE constraint failed"):
+        with database.database_transaction() as connection:
+            connection.execute(
+                """
+                INSERT INTO organization_members (
+                    organization_id,
+                    user_id,
+                    name
+                )
+                VALUES (?, ?, ?)
+                """,
+                (organization_id, user_id, "Bob"),
+            )
