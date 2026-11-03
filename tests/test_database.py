@@ -9,21 +9,32 @@ def test_database_transaction_rolls_back(client: TestClient):
         with database.database_transaction() as connection:
             connection.execute(
                 """
-                INSERT INTO tasks (title, status)
-                VALUES (?, ?)
+                INSERT INTO tasks (title, status, organization_id, priority)
+                VALUES (?, ?, ?, ?)
                 """,
-                ("Эта задача должна откатиться", "todo"),
+                ("Эта задача должна откатиться", "todo", 1, 0),
             )
+
+            stored_tasks_count = connection.execute(
+                """
+                SELECT COUNT(*)
+                FROM tasks
+                WHERE organization_id = ?
+                """,
+                (1,),
+            ).fetchone()[0]
+
+            assert stored_tasks_count == 3
 
             connection.execute(
                 """
-                INSERT INTO tasks (title, status)
-                VALUES (?, ?)
+                INSERT INTO tasks (title, status, organization_id, priority)
+                VALUES (?, ?, ?, ?)
                 """,
-                ("Некорректная задача", "potato"),
+                ("Некорректная задача", "potato", 999, 666),
             )
 
-    stored_tasks = database.get_tasks(1)
+    stored_tasks = database.get_tasks(1)[0]
 
     assert len(stored_tasks) == 2
 

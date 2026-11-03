@@ -45,6 +45,7 @@ def database_transaction() -> Generator[sqlite3.Connection]:
 
 def init_database() -> None:
     with database_transaction() as connection:
+        connection.execute("BEGIN IMMEDIATE")
         migrations.migrate_database(connection)
 
 
